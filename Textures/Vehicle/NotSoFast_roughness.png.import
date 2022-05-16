@@ -2,15 +2,15 @@
 
 importer="texture"
 type="StreamTexture"
-path="res://.import/NotSoFast_metallic.png-a8fc2a9367fcd242c5c1e2f1914f454b.stex"
+path="res://.import/NotSoFast_roughness.png-73aa8a71524459b09b06f97307a525fa.stex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Textures/Vehicle/NotSoFast_metallic.png"
-dest_files=[ "res://.import/NotSoFast_metallic.png-a8fc2a9367fcd242c5c1e2f1914f454b.stex" ]
+source_file="res://Textures/Vehicle/NotSoFast_roughness.png"
+dest_files=[ "res://.import/NotSoFast_roughness.png-73aa8a71524459b09b06f97307a525fa.stex" ]
 
 [params]
 
