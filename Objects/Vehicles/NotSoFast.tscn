@@ -1,0 +1,97 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://Models/Vehicles/NotSoFast.glb" type="PackedScene" id=1]
+[ext_resource path="res://Scripts/Vehicles/NotSoFast.cs" type="Script" id=2]
+
+[node name="NotSoFast" type="Spatial"]
+script = ExtResource( 2 )
+
+[node name="TailLights" type="Spatial" parent="."]
+
+[node name="LeftSpot" type="SpotLight" parent="TailLights"]
+transform = Transform( -4.37114e-08, 0.866025, -0.5, 0, 0.5, 0.866025, 1, 3.78552e-08, -2.18557e-08, 0.865531, -0.0770975, 0.401638 )
+light_color = Color( 1, 0.294118, 0.243137, 1 )
+light_energy = 2.0
+
+[node name="RightSpot" type="SpotLight" parent="TailLights"]
+transform = Transform( -4.37114e-08, 0.866025, -0.5, 0, 0.5, 0.866025, 1, 3.78552e-08, -2.18557e-08, 0.866, -0.077, -0.402 )
+light_color = Color( 1, 0.294118, 0.243137, 1 )
+light_energy = 2.0
+
+[node name="LeftGlow" type="OmniLight" parent="TailLights"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 1.04402, -0.0767488, 0.436909 )
+light_color = Color( 1, 0.294118, 0.243137, 1 )
+omni_range = 0.25
+
+[node name="RightGlow" type="OmniLight" parent="TailLights"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 1.044, -0.077, -0.437 )
+light_color = Color( 1, 0.294118, 0.243137, 1 )
+omni_range = 0.25
+
+[node name="HeadLights" type="Spatial" parent="."]
+
+[node name="Right" type="SpotLight" parent="HeadLights"]
+transform = Transform( -4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -1.03332, -0.0215842, -0.307705 )
+light_energy = 2.0
+spot_range = 20.0
+spot_angle = 30.58
+
+[node name="Left" type="SpotLight" parent="HeadLights"]
+transform = Transform( -4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -1.0334, -0.022, 0.308 )
+light_energy = 2.0
+spot_range = 20.0
+spot_angle = 30.58
+
+[node name="TurnSignals" type="Spatial" parent="."]
+
+[node name="Left" type="Spatial" parent="TurnSignals"]
+
+[node name="SideGlow" type="OmniLight" parent="TurnSignals/Left"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, -0.979, -0.037, 0.412575 )
+light_color = Color( 0.980392, 0.815686, 0.25098, 1 )
+light_energy = 0.75
+omni_range = 0.325
+
+[node name="Front" type="OmniLight" parent="TurnSignals/Left"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, -1.02266, -0.226041, 0.211384 )
+light_color = Color( 0.980392, 0.815686, 0.25098, 1 )
+light_energy = 0.75
+omni_range = 0.4
+
+[node name="Side" type="SpotLight" parent="TurnSignals/Left"]
+transform = Transform( -1, -6.18172e-08, 6.18172e-08, 0, 0.707107, 0.707107, -8.74228e-08, 0.707107, -0.707107, -0.979, -0.037, 0.138 )
+light_color = Color( 0.980392, 0.815686, 0.25098, 1 )
+light_energy = 0.75
+spot_range = 10.0
+spot_angle = 25.0
+
+[node name="Right" type="Spatial" parent="TurnSignals"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 0 )
+
+[node name="SideGlow" type="OmniLight" parent="TurnSignals/Right"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, -1, -0.979, -0.037, 0.413 )
+light_color = Color( 0.980392, 0.815686, 0.25098, 1 )
+light_energy = 0.75
+omni_range = 0.325
+
+[node name="Front" type="OmniLight" parent="TurnSignals/Right"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, -1, -1.023, -0.226, 0.211 )
+light_color = Color( 0.980392, 0.815686, 0.25098, 1 )
+light_energy = 0.75
+omni_range = 0.4
+
+[node name="Side" type="SpotLight" parent="TurnSignals/Right"]
+transform = Transform( -1, 6.18172e-08, -6.18172e-08, 0, 0.707107, 0.707107, 8.74228e-08, 0.707107, -0.707107, -0.978655, -0.036574, 0.137732 )
+light_color = Color( 0.980392, 0.815686, 0.25098, 1 )
+light_energy = 0.75
+spot_range = 10.0
+spot_angle = 25.0
+
+[node name="BlinkTimer" type="Timer" parent="TurnSignals"]
+wait_time = 0.4
+
+[node name="NotSoFast" parent="." instance=ExtResource( 1 )]
+
+[connection signal="UpdateTailLights" from="." to="." method="_SetTailLights"]
+[connection signal="UpdateTurnSignals" from="." to="." method="_SetTurnSignals"]
+[connection signal="timeout" from="TurnSignals/BlinkTimer" to="." method="_BlinkTurnSignals"]

@@ -1,0 +1,38 @@
+[gd_scene load_steps=6 format=2]
+
+[ext_resource path="res://Objects/Player.tscn" type="PackedScene" id=1]
+[ext_resource path="res://Objects/Maps/TestMap.tscn" type="PackedScene" id=2]
+[ext_resource path="res://Scripts/PlayerCameraController.cs" type="Script" id=3]
+
+[sub_resource type="ProceduralSky" id=2]
+
+[sub_resource type="Environment" id=1]
+background_mode = 2
+background_sky = SubResource( 2 )
+background_color = Color( 0.0941176, 0.0666667, 0.133333, 1 )
+glow_enabled = true
+glow_intensity = 8.0
+glow_strength = 0.35
+glow_bloom = 1.0
+glow_blend_mode = 0
+
+[node name="Game" type="Spatial"]
+
+[node name="Env" type="WorldEnvironment" parent="."]
+environment = SubResource( 1 )
+
+[node name="PlayerCameraController" type="Node" parent="."]
+script = ExtResource( 3 )
+
+[node name="Camera" type="Camera" parent="PlayerCameraController"]
+transform = Transform( -1, 4.37114e-08, -7.57103e-08, 0, 0.866025, 0.5, 8.74228e-08, 0.5, -0.866025, 0, 9.50957, -5 )
+fov = 90.0
+far = 1000.0
+
+[node name="Player" parent="PlayerCameraController" instance=ExtResource( 1 )]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 18.0943, 0.697302, 4.84698 )
+
+[node name="DirectionalLight" type="DirectionalLight" parent="."]
+transform = Transform( 0.760349, -0.381986, -0.525315, 0, -0.808781, 0.58811, -0.649514, -0.447169, -0.614956, 0, 91.066, 0 )
+
+[node name="TestMap" parent="." instance=ExtResource( 2 )]
