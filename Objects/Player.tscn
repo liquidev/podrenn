@@ -1,7 +1,10 @@
-[gd_scene load_steps=6 format=2]
+[gd_scene load_steps=7 format=2]
 
 [ext_resource path="res://Objects/Vehicles/NotSoFast.tscn" type="PackedScene" id=1]
 [ext_resource path="res://Scripts/Player.cs" type="Script" id=2]
+
+[sub_resource type="PhysicsMaterial" id=4]
+bounce = 0.25
 
 [sub_resource type="ConvexPolygonShape" id=1]
 points = PoolVector3Array( -0.423, 0, -1, 0.423, 0, -1, -0.408, 0.018, 1, 0.408, 0.018, 1, -0.423, -0.25, -1, 0.423, -0.25, -1, -0.408, -0.25, 1, 0.408, -0.25, 1, -0.413, 0.07, 0.441, 0.413, 0.07, 0.441, -0.415, 0.073, -0.653, 0.415, 0.073, -0.653 )
@@ -15,6 +18,7 @@ points = PoolVector3Array( -0.398, -0.243, -1, 0.398, -0.243, -1, -0.391, -0.248
 [node name="Player" type="RigidBody"]
 mode = 2
 mass = 100.0
+physics_material_override = SubResource( 4 )
 continuous_cd = true
 script = ExtResource( 2 )
 
@@ -32,9 +36,8 @@ transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, -0.427, -0.334, -1 )
 [node name="BackLeft" type="Spatial" parent="Probes"]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0.427, -0.334, -1 )
 
-[node name="FailSafeProbe" type="RayCast" parent="."]
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.341125, 0 )
-enabled = true
+[node name="FailSafeProbe" type="Spatial" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.339804, 0 )
 
 [node name="Collision1" type="CollisionShape" parent="."]
 shape = SubResource( 1 )

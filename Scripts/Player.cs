@@ -23,11 +23,14 @@ public class Player : RigidBody
    public float steeringTiltAngle = 0.2f;
    [Export(PropertyHint.Range, "0,16")]
    public float hoverHeight = 1.0f;
+   [Export]
+   public float unstuckHeight = 0.68f;
 
    [Export]
    public bool debugProbeRaycasts;
 
    private Spatial[] hoverProbes;
+   private Spatial failSafeProbe;
 
    private Vehicle vehicle;
 
@@ -57,6 +60,7 @@ public class Player : RigidBody
          (Spatial)GetNode("Probes/BackRight"),
          (Spatial)GetNode("Probes/BackLeft"),
       };
+      failSafeProbe = (Spatial)GetNode("FailSafeProbe");
       vehicle = (Vehicle)GetNode("Vehicle");
       vehicle.TailLightsEnabled = false;
    }
@@ -139,7 +143,6 @@ public class Player : RigidBody
    private Vector3? GetAverageHitNormal(List<ProbeResult> intersections)
    {
       var normals = intersections.Select(intersection => intersection.hitNormal).ToArray();
-      GD.Print(normals.Length);
 
       // NOTE: This is hardcoded to 4 normals because I can't figure out a way to take the average of
       // more than that in a sensible way.
@@ -192,20 +195,18 @@ public class Player : RigidBody
       var intersections = ProbeAllIntersections(2.5f);
       var targetNormal = GetAverageHitNormal(intersections);
       var closestIntersection = GetClosestIntersection(intersections);
-      GD.Print(targetNormal);
       if (targetNormal is Vector3 normal && closestIntersection?.hitNormal is Vector3 closestNormal)
       {
          // No need to divide the dot product by the vectors' lengths because normals are
          // unit vectors.
          var inclineCosine = floorNormal.Dot(closestNormal);
-         GD.Print(inclineCosine);
          // Limit the maximum incline you can climb to 45°.
          if (inclineCosine >= Mathf.Sqrt2 / 2f)
          {
             floorNormal = floorNormal.LinearInterpolate(normal, 0.1f);
          }
       }
-      if (LinearVelocity.LengthSquared() < 0.0001)
+      if (LinearVelocity.LengthSquared() < 0.0001f)
       {
          floorNormal = Vector3.Up;
       }
@@ -351,11 +352,23 @@ public class Player : RigidBody
       }
    }
 
+   private void Unstuck()
+   {
+      var intersections = ProbeAllIntersections(unstuckHeight);
+      var maybeRaycast = ProbeIntersection(failSafeProbe, Vector3.Down, unstuckHeight);
+      if (intersections.Count == 0 && maybeRaycast is ProbeResult raycast)
+      {
+         GD.Print("FLOOR STUCK ", LinearVelocity);
+         ApplyCentralImpulse(Vector3.Up * Mass * 50f);
+      }
+   }
+
    public override void _PhysicsProcess(float delta)
    {
       UpdateFloorNormal();
       AccelerateAndBrake();
       Steer();
+      Unstuck();
    }
 
    private struct ProbeResult
