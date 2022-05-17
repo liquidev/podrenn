@@ -230,8 +230,9 @@ public class Player : RigidBody
       var hVelocity = GetHorizontalVelocity().Length() / maxVelocity;
       var tilt = -steeringSpeed / steering * steeringTiltAngle * hVelocity * frictionCoeff;
       transform.basis = transform.basis.Rotated(transform.basis.z, tilt);
-
       Transform = transform;
+
+      Rotation = transform.basis.GetEuler();
    }
 
    private void LimitVelocity()
