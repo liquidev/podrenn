@@ -19,6 +19,8 @@ public class Player : RigidBody
    public float steering = 0.05f;
    [Export]
    public float steeringAcceleration = 0.002f;
+   [Export]
+   public float steeringTiltAngle = 0.2f;
    [Export(PropertyHint.Range, "0,16")]
    public float hoverHeight = 1.0f;
 
@@ -137,6 +139,7 @@ public class Player : RigidBody
    private Vector3? GetAverageHitNormal(List<ProbeResult> intersections)
    {
       var normals = intersections.Select(intersection => intersection.hitNormal).ToArray();
+      GD.Print(normals.Length);
 
       // NOTE: This is hardcoded to 4 normals because I can't figure out a way to take the average of
       // more than that in a sensible way.
@@ -168,7 +171,7 @@ public class Player : RigidBody
          }
       }
 
-      gravityField = Mathf.Clamp(height / (hoverHeight) - hoverHeight, 0.0f, 2.0f);
+      gravityField = Mathf.Clamp(height / hoverHeight - hoverHeight, 0.0f, 2.0f);
       GravityScale = gravityField;
 
       var yvelDamping = Math.Max(0.0f, hoverHeight - height - LinearVelocity.y * 0.15f) * Mass;
@@ -189,32 +192,44 @@ public class Player : RigidBody
       var intersections = ProbeAllIntersections(2.5f);
       var targetNormal = GetAverageHitNormal(intersections);
       var closestIntersection = GetClosestIntersection(intersections);
+      GD.Print(targetNormal);
       if (targetNormal is Vector3 normal && closestIntersection?.hitNormal is Vector3 closestNormal)
       {
          // No need to divide the dot product by the vectors' lengths because normals are
          // unit vectors.
          var inclineCosine = floorNormal.Dot(closestNormal);
+         GD.Print(inclineCosine);
          // Limit the maximum incline you can climb to 45°.
          if (inclineCosine >= Mathf.Sqrt2 / 2f)
          {
             floorNormal = floorNormal.LinearInterpolate(normal, 0.1f);
          }
       }
-      else if (LinearVelocity.LengthSquared() < 0.0001)
+      if (LinearVelocity.LengthSquared() < 0.0001)
       {
          floorNormal = Vector3.Up;
+      }
+
+      if (frictionCoeff < 0.1f)
+      {
+         floorNormal = floorNormal.LinearInterpolate(Vector3.Up, 0.01f);
       }
    }
 
    private void KeepUpright()
    {
-      var rotated = Basis.Identity.Rotated(Vector3.Up, angle);
+      var rotated = Basis.Identity.Rotated(new Vector3(0, 1, 0), angle);
       var up = floorNormal;
       var right = Transform.basis.z.Cross(up);
       var forward = right.Cross(up);
 
       var transform = Transform;
       transform.basis = new Basis(right, up, forward).Orthonormalized() * rotated;
+
+      var hVelocity = GetHorizontalVelocity().Length() / maxVelocity;
+      var tilt = -steeringSpeed / steering * steeringTiltAngle * hVelocity * frictionCoeff;
+      transform.basis = transform.basis.Rotated(transform.basis.z, tilt);
+
       Transform = transform;
    }
 

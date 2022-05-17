@@ -44,7 +44,7 @@ public class PlayerCameraController : Node
       transform.basis = player.Transform.basis;
       camera.Transform = transform;
 
-      camera.LookAt(player.Translation, player.Transform.basis.y);
+      camera.LookAt(player.Translation, Vector3.Up);
 
       var velocity = player.LinearVelocity.Length();
       var fovCoeff = Mathf.Clamp(velocity / maxVelocity, 0.0f, 1.0f);
