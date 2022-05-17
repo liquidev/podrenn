@@ -32,8 +32,8 @@ transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, -0.427, -0.334, -1 )
 [node name="BackLeft" type="Spatial" parent="Probes"]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0.427, -0.334, -1 )
 
-[node name="HoverProbe" type="RayCast" parent="."]
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.29591, 0 )
+[node name="FailSafeProbe" type="RayCast" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.341125, 0 )
 enabled = true
 
 [node name="Collision1" type="CollisionShape" parent="."]
