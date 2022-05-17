@@ -24,7 +24,9 @@ public class PlayerCameraController : Node
 
    public override void _PhysicsProcess(float delta)
    {
-      var behindPlayer = player.Translation - player.Transform.basis.z * distance + new Vector3(0.0f, distance, 0.0f);
+      var relativeCameraPosition = player.Transform.basis.Xform(new Vector3(0f, distance * 0.72f, -distance));
+      var behindPlayer = player.Translation + relativeCameraPosition;
+
       var goingBackwards = player.Transform.basis.z.Dot(player.LinearVelocity);
       if (goingBackwards < 0.0f)
       {
@@ -32,7 +34,17 @@ public class PlayerCameraController : Node
          behindPlayer -= player.Transform.basis.z * xz.Length() * 0.15f;
       }
       camera.Translation = camera.Translation.LinearInterpolate(behindPlayer, 0.2f);
-      camera.LookAt(player.Translation, Vector3.Up);
+
+      var raycast = player.GetWorld().DirectSpaceState.IntersectRay(player.Translation, camera.Translation, new Godot.Collections.Array { player });
+      if (raycast.Count > 0)
+      {
+         camera.Translation = (Vector3)raycast["position"] + (Vector3)raycast["normal"] * 0.05f;
+      }
+      var transform = camera.Transform;
+      transform.basis = player.Transform.basis;
+      camera.Transform = transform;
+
+      camera.LookAt(player.Translation, player.Transform.basis.y);
 
       var velocity = player.LinearVelocity.Length();
       var fovCoeff = Mathf.Clamp(velocity / maxVelocity, 0.0f, 1.0f);
