@@ -1,18 +1,18 @@
 using Godot;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 public class Player : RigidBody
 {
-   private Spatial[] hoverProbes;
-
-   private Vehicle vehicle;
-
    [Export]
    public float maxAcceleration = 35000.0f;
    [Export]
    public float maxBraking = -16000.0f;
    [Export]
    public float accelerationRate = 100.0f;
+   [Export]
+   public float brakingRate = 200f;
    [Export]
    public float maxVelocity = 40.0f; // m/s
    [Export]
@@ -22,9 +22,14 @@ public class Player : RigidBody
    [Export(PropertyHint.Range, "0,16")]
    public float hoverHeight = 1.0f;
 
+   [Export]
+   public bool debugProbeRaycasts;
+
+   private Spatial[] hoverProbes;
+
+   private Vehicle vehicle;
 
    private float height;
-   private Vector3 gravity;
    private float thrust;
    private float gravityField;
    private float frictionCoeff;
@@ -33,7 +38,7 @@ public class Player : RigidBody
 
    private float acceleration = 0.0f;
 
-   private float angle = 0.0f;
+   private float angle = Mathf.Pi;
    private float steeringSpeed = 0.0f;
 
    public bool isBraking { get; private set; }
@@ -59,13 +64,26 @@ public class Player : RigidBody
       return -Transform.basis.y;
    }
 
+   private Vector2 GetHorizontalVelocity()
+   {
+      return new Vector2(LinearVelocity.x, LinearVelocity.z);
+   }
+
    private ProbeResult? ProbeIntersection(Spatial probe, Vector3 direction, float maxDistance)
    {
       var origin = ToGlobal(probe.Translation);
       var dict = GetWorld().DirectSpaceState.IntersectRay(origin, origin + direction * maxDistance, new Godot.Collections.Array { this });
       if (dict.Count > 0)
       {
-         return new ProbeResult(probe, (Vector3)dict["position"], (Vector3)dict["normal"]);
+         var result = new ProbeResult(probe, (Vector3)dict["position"], (Vector3)dict["normal"]);
+         if (debugProbeRaycasts)
+         {
+            var hitDistance = DistanceFromProbeToHit(result);
+            DebugDraw.Vector(ToGlobal(probe.Translation), direction * hitDistance, new Color(0, 0, 1));
+            DebugDraw.Point(result.hitPosition, new Color(1, 0, 0));
+            DebugDraw.Vector(result.hitPosition, result.hitNormal * 0.5f, new Color(1, 0, 1));
+         }
+         return result;
       }
       else
       {
@@ -73,49 +91,91 @@ public class Player : RigidBody
       }
    }
 
-   private ProbeResult? ProbeClosestIntersection(float maxDistance)
+   private List<ProbeResult> ProbeAllIntersections(float maxDistance)
    {
-      ProbeResult? highestIntersection = null;
-      var maxDistanceFromProbe = float.PositiveInfinity;
-
-      var i = 1;
+      var results = new List<ProbeResult>(4);
       foreach (var probe in hoverProbes)
       {
          if (ProbeIntersection(probe, GetLocalDown(), maxDistance) is ProbeResult intersection)
          {
-            var distanceFromProbe = ToGlobal(probe.Translation).DistanceTo(intersection.hitPosition);
-            if (distanceFromProbe < maxDistanceFromProbe)
+            results.Add(intersection);
+         }
+      }
+      return results;
+   }
+
+   private float DistanceFromProbeToHit(ProbeResult intersection)
+   {
+      return ToGlobal(intersection.probe.Translation).DistanceTo(intersection.hitPosition);
+   }
+
+   private ProbeResult? GetClosestIntersection(List<ProbeResult> intersections)
+   {
+      if (intersections.Count == 0)
+         return null;
+      var closest = intersections?[0];
+      var closestDistance = float.NegativeInfinity;
+      foreach (var intersection in intersections)
+      {
+         if (closest == null)
+         {
+            closest = intersection;
+         }
+         else
+         {
+            var distance = DistanceFromProbeToHit(intersection);
+            if (distance < closestDistance)
             {
-               highestIntersection = intersection;
-               maxDistanceFromProbe = distanceFromProbe;
+               closest = intersection;
+               closestDistance = distance;
             }
          }
-         ++i;
       }
+      return closest;
+   }
 
-      return highestIntersection;
+   private Vector3? GetAverageHitNormal(List<ProbeResult> intersections)
+   {
+      var normals = intersections.Select(intersection => intersection.hitNormal).ToArray();
+
+      // NOTE: This is hardcoded to 4 normals because I can't figure out a way to take the average of
+      // more than that in a sensible way.
+      switch (normals.Length)
+      {
+         case 1:
+            return normals[0];
+         case 2:
+            return Ligmath.Smid(normals[0], normals[1]);
+         case 3:
+            return Ligmath.Smid(Ligmath.Smid(normals[0], normals[1]), normals[2]);
+         case 4:
+            return Ligmath.Smid(Ligmath.Smid(normals[0], normals[1]), Ligmath.Smid(normals[2], normals[3]));
+         default:
+            return null;
+      }
    }
 
    private void Hover()
    {
-      if (ProbeClosestIntersection(100f) is ProbeResult intersection)
+      var height = 100f;
+      foreach (var intersection in ProbeAllIntersections(100f))
       {
-         var ray = intersection.hitPosition - ToGlobal(intersection.probe.Translation);
-         height = ray.Length();
-      }
-      else
-      {
-         height = 1000000.0f;
+         var intersectionHeight = DistanceFromProbeToHit(intersection);
+         var inclineCosine = floorNormal.Dot(intersection.hitNormal);
+         if (intersectionHeight < height && inclineCosine >= Mathf.Sqrt2 / 2f)
+         {
+            height = intersectionHeight;
+         }
       }
 
-      gravityField = Mathf.Clamp(height / (hoverHeight * 2.0f) - hoverHeight, 0.0f, 1.0f);
+      gravityField = Mathf.Clamp(height / (hoverHeight) - hoverHeight, 0.0f, 2.0f);
       GravityScale = gravityField;
 
-      var yvelDamping = Math.Max(0.0f, hoverHeight - height - LinearVelocity.y * 0.2f) * Mass;
-      ApplyCentralImpulse(Transform.basis.y * yvelDamping);
+      var yvelDamping = Math.Max(0.0f, hoverHeight - height - LinearVelocity.y * 0.15f) * Mass;
+      ApplyCentralImpulse(floorNormal * yvelDamping);
 
-      thrust = Mathf.Pow(Math.Max(0.0f, hoverHeight - height), 3.0f) * 10.0f;
-      ApplyCentralImpulse(Transform.basis.y * thrust * Mass);
+      thrust = Mathf.Pow(Math.Max(0.0f, hoverHeight - height), 3.0f) * 5.0f;
+      ApplyCentralImpulse(floorNormal * thrust * Mass);
 
       var frictionHeight = 6.0f;
       frictionCoeff = Math.Max(0.0f, (hoverHeight * frictionHeight - height) / (hoverHeight * frictionHeight));
@@ -124,13 +184,30 @@ public class Player : RigidBody
       ApplyCentralImpulse(frictionForce);
    }
 
+   private void UpdateFloorNormal()
+   {
+      var intersections = ProbeAllIntersections(2.5f);
+      var targetNormal = GetAverageHitNormal(intersections);
+      var closestIntersection = GetClosestIntersection(intersections);
+      if (targetNormal is Vector3 normal && closestIntersection?.hitNormal is Vector3 closestNormal)
+      {
+         // No need to divide the dot product by the vectors' lengths because normals are
+         // unit vectors.
+         var inclineCosine = floorNormal.Dot(closestNormal);
+         // Limit the maximum incline you can climb to 45°.
+         if (inclineCosine >= Mathf.Sqrt2 / 2f)
+         {
+            floorNormal = floorNormal.LinearInterpolate(normal, 0.1f);
+         }
+      }
+      else if (LinearVelocity.LengthSquared() < 0.0001)
+      {
+         floorNormal = Vector3.Up;
+      }
+   }
+
    private void KeepUpright()
    {
-      var highestIntersection = ProbeClosestIntersection(5.0f);
-
-      var targetNormal = highestIntersection is ProbeResult intersection ? intersection.hitNormal : new Vector3(0f, 1f, 0f);
-      floorNormal = floorNormal.LinearInterpolate(targetNormal, 0.1f);
-
       var rotated = Basis.Identity.Rotated(Vector3.Up, angle);
       var up = floorNormal;
       var right = Transform.basis.z.Cross(up);
@@ -143,19 +220,18 @@ public class Player : RigidBody
 
    private void LimitVelocity()
    {
-      var xzVelocityV = new Vector2(LinearVelocity.x, LinearVelocity.z);
-      var xzVelocity = Math.Min(xzVelocityV.Length(), maxVelocity);
-      xzVelocityV = xzVelocityV.Normalized() * xzVelocity;
+      var hVelocity = GetHorizontalVelocity();
+      var limitedSpeed = Math.Min(hVelocity.Length(), maxVelocity);
+      hVelocity = hVelocity.Normalized() * limitedSpeed;
       var linVel = LinearVelocity;
-      linVel.x = xzVelocityV.x;
-      linVel.z = xzVelocityV.y;
+      linVel.x = hVelocity.x;
+      linVel.z = hVelocity.y;
       LinearVelocity = linVel;
    }
 
    public override void _IntegrateForces(PhysicsDirectBodyState state)
    {
       LimitVelocity();
-      gravity = state.TotalGravity;
       KeepUpright();
       Hover();
    }
@@ -171,6 +247,13 @@ public class Player : RigidBody
       var accelerating = false;
       var brakeDown = false;
 
+      if (GetHorizontalVelocity().Length() <= 0.01f)
+      {
+         acceleration = 0f;
+      }
+
+      var forwardDirection = Transform.basis.z.Dot(LinearVelocity);
+
       if (Input.IsActionPressed("accelerate"))
       {
          acceleration += accelerationRate;
@@ -178,7 +261,7 @@ public class Player : RigidBody
       }
       if (Input.IsActionPressed("brake"))
       {
-         acceleration += -accelerationRate;
+         acceleration += forwardDirection > 0 ? -brakingRate : -accelerationRate;
          accelerating = true;
          brakeDown = true;
       }
@@ -189,12 +272,11 @@ public class Player : RigidBody
       acceleration = Mathf.Clamp(acceleration, maxBraking, maxAcceleration);
       if (frictionCoeff < 0.1f)
       {
-         acceleration *= 0.9f;
+         acceleration *= 0.995f;
       }
 
       AddCentralForce(forward * acceleration * Mathf.Clamp(frictionCoeff, 0.01f, 1.0f));
 
-      var forwardDirection = Transform.basis.z.Dot(LinearVelocity);
       if (forwardDirection > 0 && brakeDown)
       {
          isBraking = true;
@@ -256,6 +338,7 @@ public class Player : RigidBody
 
    public override void _PhysicsProcess(float delta)
    {
+      UpdateFloorNormal();
       AccelerateAndBrake();
       Steer();
    }
